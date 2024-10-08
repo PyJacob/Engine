@@ -1,0 +1,109 @@
+#include <iostream>
+#include <cmath>
+#include <vector>
+
+// Ustawienia wstępne mapy
+const int mapWidth = 24;
+const int mapHeight = 24;
+const int screenWidth = 320;
+const int screenHeight = 240;
+
+int worldMap[mapWidth][mapHeight] = {
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+    {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+    //...(mapa)...
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
+};
+
+struct Player {
+    double x, y;     // Pozycja gracza
+    double dirX, dirY;  // Kierunek patrzenia
+    double planeX, planeY; // Płaszczyzna projekcji kamery
+};
+
+// Inicjalizacja gracza
+Player player = {22.0, 12.0, -1.0, 0.0, 0.0, 0.66};
+
+void render() {
+    for (int x = 0; x < screenWidth; x++) {
+        // Oblicz promień dla każdego piksela na ekranie
+        double cameraX = 2 * x / double(screenWidth) - 1;
+        double rayDirX = player.dirX + player.planeX * cameraX;
+        double rayDirY = player.dirY + player.planeY * cameraX;
+
+        // Pozycja gracza na mapie
+        int mapX = int(player.x);
+        int mapY = int(player.y);
+
+        // Odległość do następnej granicy kratki
+        double sideDistX;
+        double sideDistY;
+
+        // Długość promienia do granicy kratki
+        double deltaDistX = std::abs(1 / rayDirX);
+        double deltaDistY = std::abs(1 / rayDirY);
+        double perpWallDist;
+
+        // Kierunek kroków
+        int stepX, stepY;
+        int hit = 0; // Czy trafiono w ścianę?
+        int side; // Czy ściana jest pionowa czy pozioma?
+
+        // Ustal kierunek kroków i początkową odległość do granicy kratki
+        if (rayDirX < 0) {
+            stepX = -1;
+            sideDistX = (player.x - mapX) * deltaDistX;
+        } else {
+            stepX = 1;
+            sideDistX = (mapX + 1.0 - player.x) * deltaDistX;
+        }
+        if (rayDirY < 0) {
+            stepY = -1;
+            sideDistY = (player.y - mapY) * deltaDistY;
+        } else {
+            stepY = 1;
+            sideDistY = (mapY + 1.0 - player.y) * deltaDistY;
+        }
+
+        // Algorytm DDA
+        while (hit == 0) {
+            if (sideDistX < sideDistY) {
+                sideDistX += deltaDistX;
+                mapX += stepX;
+                side = 0;
+            } else {
+                sideDistY += deltaDistY;
+                mapY += stepY;
+                side = 1;
+            }
+            if (worldMap[mapX][mapY] > 0) hit = 1;
+        }
+
+        // Oblicz odległość do ściany
+        if (side == 0) perpWallDist = (mapX - player.x + (1 - stepX) / 2) / rayDirX;
+        else perpWallDist = (mapY - player.y + (1 - stepY) / 2) / rayDirY;
+
+        // Oblicz wysokość ściany na ekranie
+        int lineHeight = (int)(screenHeight / perpWallDist);
+
+        // Określ punkt początkowy i końcowy rysowania na ekranie
+        int drawStart = -lineHeight / 2 + screenHeight / 2;
+        if (drawStart < 0) drawStart = 0;
+        int drawEnd = lineHeight / 2 + screenHeight / 2;
+        if (drawEnd >= screenHeight) drawEnd = screenHeight - 1;
+
+        // Rysuj pionową linię reprezentującą ścianę
+        for (int y = drawStart; y < drawEnd; y++) {
+            // Tutaj można dodać teksturowanie ścian
+            std::cout << "#"; // Prosty symbol ściany
+        }
+        std::cout << std::endl;
+    }
+}
+
+int main() {
+    while (true) {
+        render();
+    }
+    return 0;
+}
